@@ -1593,9 +1593,9 @@ function render(){
 function renderHome(){
   const lb=getLB();
   return `
-    <div class="flag">🇩🇪</div>
-    <div class="title">Deutsch Quiz</div>
-    <div class="subtitle">Kosakata Bahasa Jerman · Level A1</div>
+    <div class="flag">🇩🇪🇮🇩</div>
+    <div class="title">Frei Deutsch</div>
+    <div class="subtitle">Belajar Bahasa Jerman · Level A1</div>
     <input placeholder="Nama kamu (opsional)" value="${st.name}" oninput="st.name=this.value"/>
     <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:10px;font-weight:600">PILIH MODE BELAJAR</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -1612,12 +1612,7 @@ function renderHome(){
       <div class="nav-card" style="border-color:rgba(74,222,128,0.4);background:rgba(74,222,128,0.08);grid-column:span 2" onclick="goTo('verben_menu')">
         <div class="nav-icon">📝</div>
         <div class="nav-label">Verben & Kasus</div>
-        <div class="nav-desc">Nominativ · Akkusativ · Dativ · 30 soal pilihan ganda</div>
-      </div>
-      <div class="nav-card" style="border-color:rgba(96,165,250,0.4);background:rgba(96,165,250,0.08);grid-column:span 2" onclick="goTo('vquiz_menu')">
-        <div class="nav-icon">📖</div>
-        <div class="nav-label">Verben Quiz</div>
-        <div class="nav-desc">Tebak arti · Kata Kerja & Kata Sifat</div>
+        <div class="nav-desc">Nominativ · Akkusativ · Dativ</div>
       </div>
       <div class="nav-card green" onclick="startSentence()">
         <div class="nav-icon">📝</div>
@@ -1640,6 +1635,18 @@ function renderHome(){
         <div class="nav-desc">${lb.length} sesi tersimpan</div>
       </div>
     </div>
+
+    <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:10px;font-weight:600">📖 VERBEN QUIZ</div>
+    <div onclick="goTo('vquiz_menu')" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:16px;border:2px solid rgba(96,165,250,0.5);background:rgba(96,165,250,0.1);cursor:pointer;margin-bottom:12px">
+      <div style="font-size:36px">📖</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:800;color:#60a5fa">Verben Quiz</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:3px">Tebak arti Kata Kerja & Kata Sifat</div>
+        <div style="font-size:10px;color:rgba(96,165,250,0.7);margin-top:2px">✅ Regelm. · ⚡ Unregelm. · 💬 Modal · ✂️ Trennbar · 🌈 Adjektiv</div>
+      </div>
+      <div style="font-size:24px;color:rgba(255,255,255,0.2)">›</div>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <div class="nav-card" style="border-color:rgba(236,72,153,0.4);background:rgba(236,72,153,0.08)" onclick="startFlashcard()">
         <div class="nav-icon">🃏</div>
