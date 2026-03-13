@@ -1,6 +1,6 @@
 {
-  "name": "Deutsch Quiz A1",
-  "short_name": "Deutsch Quiz",
+  "name": "Frei Deutsch",
+  "short_name": "Frei Deutsch",
   "description": "Belajar Bahasa Jerman Level A1 - Kosakata, Verben, Kasus",
   "start_url": "./index.html",
   "display": "standalone",

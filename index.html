@@ -1549,6 +1549,7 @@ let st = {
   goetheMode:'latihan',
   verbenFilter:'ALL', verbenPool:[], verbenIdx:0, verbenSel:null, verbenAnswered:false,
   vvPool:[], vvIdx:0, vvSel:null, vvAnswered:false, vvCorrect:0, vvWrong:0, vvScore:0, vvOpts:[], vvAns:-1, vvFilter:'Semua',
+  vqFilter:'', vqPool:[], vqIdx:0, vqSel:null, vqAnswered:false, vqCorrect:0, vqWrong:0, vqScore:0, vqOpts:[], vqAns:-1,
   verbenCorrect:0, verbenWrong:0, verbenScore:0, // 'latihan' or 'simulasi'
   simuTimer:null, simuSeconds:0,
   lesenPool:[], lesenIdx:0, lesenQIdx:0, lesenAnswered:false, lesenSel:null,
@@ -1583,6 +1584,7 @@ function render(){
     leaderboard:renderLeaderboard, anagram:renderAnagram,
     anagram_result:renderAnagramResult, sentence:renderSentence,
     sentence_result:renderSentenceResult,
+    vquiz_menu:renderVQuizMenu, vquiz:renderVQuiz, vquiz_result:renderVQuizResult,
   };
   app.innerHTML=(screens[st.screen]||renderHome)();
 }
@@ -1611,6 +1613,11 @@ function renderHome(){
         <div class="nav-icon">📝</div>
         <div class="nav-label">Verben & Kasus</div>
         <div class="nav-desc">Nominativ · Akkusativ · Dativ · 30 soal pilihan ganda</div>
+      </div>
+      <div class="nav-card" style="border-color:rgba(96,165,250,0.4);background:rgba(96,165,250,0.08);grid-column:span 2" onclick="goTo('vquiz_menu')">
+        <div class="nav-icon">📖</div>
+        <div class="nav-label">Verben Quiz</div>
+        <div class="nav-desc">Tebak arti · Kata Kerja & Kata Sifat</div>
       </div>
       <div class="nav-card green" onclick="startSentence()">
         <div class="nav-icon">📝</div>
@@ -5345,16 +5352,437 @@ function renderVerbenVocabResult(){
   `;
 }
 
-</script>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(() => console.log('SW registered'))
-          .catch(e => console.log('SW error:', e));
-      });
+// ======================================================
+// VERBEN QUIZ — TEBAK ARTI (Kata Kerja & Kata Sifat)
+// ======================================================
+
+const VQUIZ_DATA = {
+  // ── KATA KERJA ──────────────────────────────────────
+  'Regelmäßige Verben': [
+    {w:'machen',    m:'membuat / melakukan'},
+    {w:'lernen',    m:'belajar'},
+    {w:'spielen',   m:'bermain'},
+    {w:'kaufen',    m:'membeli'},
+    {w:'wohnen',    m:'tinggal'},
+    {w:'arbeiten',  m:'bekerja'},
+    {w:'fragen',    m:'bertanya'},
+    {w:'antworten', m:'menjawab'},
+    {w:'hören',     m:'mendengar'},
+    {w:'kochen',    m:'memasak'},
+    {w:'tanzen',    m:'menari'},
+    {w:'lachen',    m:'tertawa'},
+    {w:'weinen',    m:'menangis'},
+    {w:'suchen',    m:'mencari'},
+    {w:'brauchen',  m:'membutuhkan'},
+    {w:'glauben',   m:'percaya / berpikir'},
+    {w:'zeigen',    m:'menunjukkan'},
+    {w:'öffnen',    m:'membuka'},
+    {w:'schließen', m:'menutup'},
+    {w:'sagen',     m:'mengatakan'},
+    {w:'stellen',   m:'meletakkan (tegak)'},
+    {w:'legen',     m:'meletakkan (berbaring)'},
+    {w:'lieben',    m:'mencintai'},
+    {w:'hassen',    m:'membenci'},
+    {w:'reisen',    m:'bepergian'},
+    {w:'warten',    m:'menunggu'},
+    {w:'bedeuten',  m:'berarti'},
+    {w:'danken',    m:'berterima kasih'},
+    {w:'heiraten',  m:'menikah'},
+    {w:'putzen',    m:'membersihkan'},
+  ],
+  'Unregelmäßige Verben': [
+    {w:'sein',       m:'adalah / ada'},
+    {w:'haben',      m:'mempunyai'},
+    {w:'gehen',      m:'pergi / berjalan'},
+    {w:'kommen',     m:'datang'},
+    {w:'fahren',     m:'berkendara / pergi'},
+    {w:'essen',      m:'makan'},
+    {w:'trinken',    m:'minum'},
+    {w:'schlafen',   m:'tidur'},
+    {w:'lesen',      m:'membaca'},
+    {w:'schreiben',  m:'menulis'},
+    {w:'sprechen',   m:'berbicara'},
+    {w:'sehen',      m:'melihat'},
+    {w:'geben',      m:'memberi'},
+    {w:'nehmen',     m:'mengambil'},
+    {w:'laufen',     m:'berlari / berjalan'},
+    {w:'stehen',     m:'berdiri'},
+    {w:'liegen',     m:'berbaring'},
+    {w:'sitzen',     m:'duduk'},
+    {w:'treffen',    m:'bertemu'},
+    {w:'finden',     m:'menemukan'},
+    {w:'wissen',     m:'mengetahui (fakta)'},
+    {w:'denken',     m:'berpikir'},
+    {w:'bringen',    m:'membawa'},
+    {w:'helfen',     m:'membantu'},
+    {w:'verlieren',  m:'kehilangan / kalah'},
+    {w:'gewinnen',   m:'menang / mendapatkan'},
+    {w:'tragen',     m:'membawa / memakai'},
+    {w:'waschen',    m:'mencuci'},
+    {w:'vergessen',  m:'melupakan'},
+    {w:'beginnen',   m:'memulai'},
+  ],
+  'Modalverben': [
+    {w:'können',  m:'bisa / mampu'},
+    {w:'müssen',  m:'harus (keharusan)'},
+    {w:'wollen',  m:'ingin / mau'},
+    {w:'dürfen',  m:'boleh / diizinkan'},
+    {w:'sollen',  m:'seharusnya (perintah orang lain)'},
+    {w:'mögen',   m:'suka / menyukai'},
+    {w:'möchten', m:'ingin (lebih sopan dari wollen)'},
+  ],
+  'Trennbare Verben': [
+    {w:'aufstehen',   m:'bangun (dari tidur)'},
+    {w:'anrufen',     m:'menelepon'},
+    {w:'einkaufen',   m:'berbelanja'},
+    {w:'anfangen',    m:'memulai'},
+    {w:'aufmachen',   m:'membuka'},
+    {w:'zumachen',    m:'menutup'},
+    {w:'anziehen',    m:'mengenakan (pakaian)'},
+    {w:'ausziehen',   m:'melepas (pakaian) / pindah'},
+    {w:'mitnehmen',   m:'membawa serta'},
+    {w:'abholen',     m:'menjemput'},
+    {w:'vorstellen',  m:'memperkenalkan'},
+    {w:'einladen',    m:'mengundang'},
+    {w:'zurückkommen',m:'kembali'},
+    {w:'fernsehen',   m:'menonton TV'},
+    {w:'aufräumen',   m:'membereskan'},
+    {w:'ausschalten', m:'mematikan'},
+    {w:'einschalten', m:'menyalakan'},
+    {w:'umsteigen',   m:'berganti (kendaraan)'},
+    {w:'nachfragen',  m:'menanyakan lebih lanjut'},
+    {w:'vorbereiten', m:'mempersiapkan'},
+  ],
+  'Hilfsverben': [
+    {w:'sein',    m:'adalah / ada (Hilfsverb)'},
+    {w:'haben',   m:'mempunyai (Hilfsverb)'},
+    {w:'werden',  m:'akan / menjadi (Hilfsverb)'},
+  ],
+
+  // ── KATA SIFAT ───────────────────────────────────────
+  'Kata Sifat Dasar': [
+    {w:'groß',      m:'besar / tinggi'},
+    {w:'klein',     m:'kecil / pendek'},
+    {w:'gut',       m:'baik / bagus'},
+    {w:'schlecht',  m:'buruk / jelek'},
+    {w:'neu',       m:'baru'},
+    {w:'alt',       m:'lama / tua'},
+    {w:'schön',     m:'cantik / indah'},
+    {w:'hässlich',  m:'jelek / buruk rupa'},
+    {w:'billig',    m:'murah'},
+    {w:'teuer',     m:'mahal'},
+    {w:'schnell',   m:'cepat'},
+    {w:'langsam',   m:'lambat'},
+    {w:'leicht',    m:'mudah / ringan'},
+    {w:'schwer',    m:'sulit / berat'},
+    {w:'kalt',      m:'dingin'},
+    {w:'warm',      m:'hangat'},
+    {w:'heiß',      m:'panas'},
+    {w:'laut',      m:'keras / berisik'},
+    {w:'leise',     m:'pelan / sunyi'},
+    {w:'voll',      m:'penuh'},
+    {w:'leer',      m:'kosong'},
+    {w:'richtig',   m:'benar / tepat'},
+    {w:'falsch',    m:'salah / keliru'},
+    {w:'lang',      m:'panjang / lama'},
+    {w:'kurz',      m:'pendek / singkat'},
+    {w:'breit',     m:'lebar'},
+    {w:'eng',       m:'sempit'},
+    {w:'hell',      m:'terang / cerah'},
+    {w:'dunkel',    m:'gelap'},
+    {w:'früh',      m:'awal / pagi'},
+    {w:'spät',      m:'terlambat / malam'},
+    {w:'müde',      m:'lelah / ngantuk'},
+    {w:'frisch',    m:'segar'},
+    {w:'sauber',    m:'bersih'},
+    {w:'schmutzig', m:'kotor'},
+    {w:'wichtig',   m:'penting'},
+    {w:'interessant',m:'menarik / interessant'},
+    {w:'langweilig', m:'membosankan'},
+    {w:'gefährlich', m:'berbahaya'},
+    {w:'sicher',    m:'aman / pasti'},
+  ],
+  'Kata Sifat Karakter': [
+    {w:'freundlich', m:'ramah / bersahabat'},
+    {w:'nett',       m:'baik hati / menyenangkan'},
+    {w:'lustig',     m:'lucu / menyenangkan'},
+    {w:'traurig',    m:'sedih'},
+    {w:'glücklich',  m:'bahagia / beruntung'},
+    {w:'wütend',     m:'marah'},
+    {w:'nervös',     m:'gugup'},
+    {w:'ruhig',      m:'tenang'},
+    {w:'fleißig',    m:'rajin'},
+    {w:'faul',       m:'malas'},
+    {w:'klug',       m:'cerdas / pintar'},
+    {w:'dumm',       m:'bodoh'},
+    {w:'mutig',      m:'berani'},
+    {w:'ängstlich',  m:'penakut / cemas'},
+    {w:'ehrlich',    m:'jujur'},
+    {w:'höflich',    m:'sopan'},
+    {w:'unhöflich',  m:'tidak sopan / kasar'},
+    {w:'geduldig',   m:'sabar'},
+    {w:'ungeduldig', m:'tidak sabar'},
+    {w:'kreativ',    m:'kreatif'},
+    {w:'sportlich',  m:'sporty / aktif olahraga'},
+    {w:'selbstständig',m:'mandiri'},
+    {w:'hilfsbereit',m:'suka menolong'},
+    {w:'zuverlässig',m:'dapat diandalkan'},
+    {w:'neugierig',  m:'penasaran / ingin tahu'},
+    {w:'schüchtern', m:'pemalu'},
+    {w:'selbstbewusst',m:'percaya diri'},
+    {w:'optimistisch',m:'optimis'},
+    {w:'pessimistisch',m:'pesimis'},
+    {w:'gesellig',   m:'suka bergaul / supel'},
+  ],
+};
+
+// Flatten semua kata untuk digunakan sebagai distractors
+const VQUIZ_ALL_WORDS = Object.values(VQUIZ_DATA).flat();
+
+const VQUIZ_CATS = [
+  { key:'Regelmäßige Verben',   icon:'✅', color:'#4ade80',  desc:'Kata kerja beraturan · pola tetap',          group:'kata_kerja' },
+  { key:'Unregelmäßige Verben', icon:'⚡', color:'#f87171',  desc:'Kata kerja tidak beraturan · vokal berubah', group:'kata_kerja' },
+  { key:'Modalverben',          icon:'💬', color:'#a78bfa',  desc:'Kata kerja modal · können, müssen, dll',     group:'kata_kerja' },
+  { key:'Trennbare Verben',     icon:'✂️', color:'#60a5fa',  desc:'Kata kerja terpisah · aufstehen, anrufen',   group:'kata_kerja' },
+  { key:'Hilfsverben',          icon:'🔧', color:'#facc15',  desc:'Kata kerja bantu · sein, haben, werden',     group:'kata_kerja' },
+  { key:'Kata Sifat Dasar',     icon:'🌈', color:'#fb923c',  desc:'Kata sifat umum sehari-hari',                group:'kata_sifat' },
+  { key:'Kata Sifat Karakter',  icon:'😊', color:'#e879f9',  desc:'Sifat & kepribadian seseorang',              group:'kata_sifat' },
+];
+
+// ── State init (tambahkan ke st) ──
+// vqFilter, vqPool, vqIdx, vqSel, vqAnswered, vqCorrect, vqWrong, vqScore, vqOpts, vqAns
+
+function generateVQOptions(){
+  const q = st.vqPool[st.vqIdx];
+  if(!q) return;
+  // 3 distractors: ambil dari semua kata, beda kata & beda arti
+  const pool = shuffle(VQUIZ_ALL_WORDS.filter(v => v.w !== q.w && v.m !== q.m));
+  const distractors = pool.slice(0, 3).map(v => v.m);
+  const allOpts = shuffle([q.m, ...distractors]);
+  st.vqOpts = allOpts;
+  st.vqAns  = allOpts.indexOf(q.m);
+}
+
+function startVQuiz(filterKey){
+  const isAll = !filterKey || filterKey === 'SEMUA_VERBEN' || filterKey === 'SEMUA_ADJEKTIV';
+  let pool;
+  if(filterKey === 'SEMUA_VERBEN'){
+    pool = ['Regelmäßige Verben','Unregelmäßige Verben','Modalverben','Trennbare Verben','Hilfsverben']
+           .flatMap(k => VQUIZ_DATA[k]);
+  } else if(filterKey === 'SEMUA_ADJEKTIV'){
+    pool = ['Kata Sifat Dasar','Kata Sifat Karakter'].flatMap(k => VQUIZ_DATA[k]);
+  } else {
+    pool = VQUIZ_DATA[filterKey] || [];
+  }
+  st.vqFilter   = filterKey;
+  st.vqPool     = shuffle([...pool]);
+  st.vqIdx      = 0;
+  st.vqSel      = null;
+  st.vqAnswered = false;
+  st.vqCorrect  = 0;
+  st.vqWrong    = 0;
+  st.vqScore    = 0;
+  st.vqOpts     = [];
+  st.vqAns      = -1;
+  generateVQOptions();
+  st.screen = 'vquiz'; render();
+}
+
+function handleVQ(idx){
+  if(st.vqAnswered) return;
+  st.vqSel      = idx;
+  st.vqAnswered = true;
+  if(idx === st.vqAns){
+    st.vqCorrect++;
+    st.vqScore += 10;
+    addXP(5); playSound('correct');
+  } else {
+    st.vqWrong++;
+    playSound('wrong');
+  }
+  render();
+}
+
+function nextVQ(){
+  st.vqIdx++;
+  st.vqSel      = null;
+  st.vqAnswered = false;
+  if(st.vqIdx >= st.vqPool.length){
+    st.screen = 'vquiz_result'; render(); return;
+  }
+  generateVQOptions();
+  render();
+}
+
+function renderVQuizMenu(){
+  const verbCats  = VQUIZ_CATS.filter(c => c.group === 'kata_kerja');
+  const adjCats   = VQUIZ_CATS.filter(c => c.group === 'kata_sifat');
+  const totalVerb = ['Regelmäßige Verben','Unregelmäßige Verben','Modalverben','Trennbare Verben','Hilfsverben']
+                    .reduce((s,k)=>s+VQUIZ_DATA[k].length,0);
+  const totalAdj  = ['Kata Sifat Dasar','Kata Sifat Karakter']
+                    .reduce((s,k)=>s+VQUIZ_DATA[k].length,0);
+
+  function catCard(cat){
+    const cnt = VQUIZ_DATA[cat.key].length;
+    return `<div onclick="startVQuiz('${cat.key}')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:16px;border:2px solid ${cat.color}30;background:${cat.color}0d;cursor:pointer;margin-bottom:8px">
+      <div style="font-size:22px">${cat.icon}</div>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:13px;color:${cat.color}">${cat.key}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${cat.desc}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:${cat.color};font-weight:700">${cnt} kata</div>
+        <div style="font-size:16px;color:rgba(255,255,255,0.2)">›</div>
+      </div>
+    </div>`;
+  }
+
+  return `
+    <button class="close-btn" onclick="goTo('home')">&#x2715;</button>
+    <div style="text-align:center;margin-bottom:18px;margin-top:44px">
+      <div style="font-size:36px;margin-bottom:6px">📖</div>
+      <div style="font-size:21px;font-weight:900">Verben Quiz</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Tebak arti kata · Pilihan ganda</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:10px">⚡ KATA KERJA</div>
+    <div onclick="startVQuiz('SEMUA_VERBEN')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:16px;border:2px solid #facc1550;background:#facc1510;cursor:pointer;margin-bottom:8px">
+      <div style="font-size:22px">🎯</div>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:13px;color:#facc15">Semua Kata Kerja</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Campur semua kategori kata kerja</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:#facc15;font-weight:700">${totalVerb} kata</div>
+        <div style="font-size:16px;color:rgba(255,255,255,0.2)">›</div>
+      </div>
+    </div>
+    ${verbCats.map(catCard).join('')}
+
+    <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:1px;margin:14px 0 10px">🌈 KATA SIFAT</div>
+    <div onclick="startVQuiz('SEMUA_ADJEKTIV')" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:16px;border:2px solid #e879f950;background:#e879f910;cursor:pointer;margin-bottom:8px">
+      <div style="font-size:22px">✨</div>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:13px;color:#e879f9">Semua Kata Sifat</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Campur semua kategori kata sifat</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:#e879f9;font-weight:700">${totalAdj} kata</div>
+        <div style="font-size:16px;color:rgba(255,255,255,0.2)">›</div>
+      </div>
+    </div>
+    ${adjCats.map(catCard).join('')}
+
+    <button class="btn-secondary" style="margin-top:8px" onclick="goTo('home')">← Kembali</button>
+  `;
+}
+
+function renderVQuiz(){
+  if(st.vqIdx >= st.vqPool.length){ st.screen='vquiz_result'; return renderVQuizResult(); }
+  const q      = st.vqPool[st.vqIdx];
+  const num    = st.vqIdx + 1;
+  const total  = st.vqPool.length;
+  const pct    = Math.round((st.vqIdx / total) * 100);
+  const cat    = VQUIZ_CATS.find(c => c.key === st.vqFilter);
+  const col    = cat ? cat.color : '#a78bfa';
+  const icon   = cat ? cat.icon  : '📖';
+  const label  = cat ? cat.key   : st.vqFilter;
+
+  const letters = ['A','B','C','D'];
+  const opts = st.vqOpts.map((o, i) => {
+    let bg = 'rgba(255,255,255,0.06)', border = 'rgba(255,255,255,0.1)', color = '#fff', fw = '600';
+    if(st.vqAnswered){
+      if(i === st.vqAns)     { bg='rgba(74,222,128,0.18)'; border='#4ade80'; color='#4ade80'; fw='700'; }
+      else if(i === st.vqSel){ bg='rgba(248,113,113,0.18)'; border='#f87171'; color='#f87171'; fw='700'; }
+      else                   { bg='rgba(255,255,255,0.03)'; color='rgba(255,255,255,0.3)'; }
     }
-  </script>
+    const dis = st.vqAnswered ? 'disabled' : '';
+    return `<button onclick="handleVQ(${i})" ${dis}
+      style="width:100%;padding:13px 14px;border-radius:14px;border:2px solid ${border};background:${bg};
+             color:${color};font-size:14px;font-weight:${fw};cursor:pointer;transition:all 0.2s;
+             text-align:left;display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="min-width:24px;height:24px;border-radius:50%;background:${border}30;display:inline-flex;
+                   align-items:center;justify-content:center;font-size:11px;font-weight:800">${letters[i]}</span>
+      <span>${o}</span>
+    </button>`;
+  }).join('');
+
+  const nextLabel = num < total ? 'Soal Berikutnya →' : 'Lihat Hasil 🏁';
+
+  return `
+    <button class="close-btn" onclick="goTo('vquiz_menu')">&#x2715;</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;margin-top:44px">
+      <div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,${col},#a78bfa);border-radius:99px;transition:width 0.3s"></div>
+      </div>
+      <span style="font-size:12px;color:rgba(255,255,255,0.5)">${num}/${total}</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <span style="background:${col}20;color:${col};border-radius:99px;padding:3px 12px;font-size:11px;font-weight:700;border:1px solid ${col}40">${icon} ${label}</span>
+      <span style="color:rgba(255,255,255,0.3);font-size:11px">Soal ${num} dari ${total}</span>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.06);border-left:4px solid ${col};border-radius:16px;padding:22px;text-align:center;margin-bottom:18px">
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:10px;letter-spacing:1px">APA ARTI KATA INI?</div>
+      <div style="font-size:36px;font-weight:900;color:${col};letter-spacing:1px">${q.w}</div>
+    </div>
+
+    <div>${opts}</div>
+
+    ${st.vqAnswered ? `
+      <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+        <div style="font-size:13px;color:rgba(255,255,255,0.8)">
+          ${st.vqSel === st.vqAns ? '✅ Benar!' : '❌ Salah!'} Jawaban: <strong style="color:#4ade80">${st.vqOpts[st.vqAns]}</strong>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="nextVQ()">${nextLabel}</button>
+    ` : `
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,0.35);padding:0 4px;margin-top:4px">
+        <span style="color:#4ade80">✓ ${st.vqCorrect} benar</span>
+        <span style="color:#f87171">✗ ${st.vqWrong} salah</span>
+      </div>
+    `}
+  `;
+}
+
+function renderVQuizResult(){
+  const total = st.vqPool.length;
+  const pct   = Math.round((st.vqCorrect / total) * 100);
+  const lulus = pct >= 60;
+  const cat   = VQUIZ_CATS.find(c => c.key === st.vqFilter);
+  const col   = cat ? cat.color : '#a78bfa';
+  const icon  = cat ? cat.icon  : '📖';
+  const entry = {name:st.name||'Anonym', score:st.vqScore, q:total, acc:pct, mode:'Verben Quiz', date:new Date().toLocaleDateString('id-ID')};
+  saveLB(entry);
+  return `
+    <div style="text-align:center;padding:16px 0">
+      <div style="font-size:52px;margin-bottom:10px">${lulus?'🎉':'💪'}</div>
+      <div style="font-size:20px;font-weight:900">${icon} Verben Quiz</div>
+      <div style="font-size:12px;color:${col};margin-top:4px;font-weight:700">${st.vqFilter||'Semua'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:16px 0">
+        <div style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px">
+          <div style="font-size:22px;font-weight:900;color:#4ade80">${st.vqCorrect}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4)">Benar</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px">
+          <div style="font-size:22px;font-weight:900;color:#f87171">${st.vqWrong}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4)">Salah</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px">
+          <div style="font-size:22px;font-weight:900;color:${col}">${pct}%</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4)">Akurasi</div>
+        </div>
+      </div>
+      <div style="font-size:28px;font-weight:900;color:${lulus?'#4ade80':'#fb923c'};margin-bottom:6px">${st.vqScore} poin</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:20px">${lulus?'Kosakata dikuasai dengan baik! 🌟':'Terus latihan, perbanyak kosakata! 💪'}</div>
+      <button class="btn-primary" onclick="startVQuiz('${st.vqFilter||''}')">Coba Lagi 🔁</button>
+      <button class="btn-secondary" onclick="goTo('vquiz_menu')" style="margin-top:8px">← Kembali</button>
+    </div>
+  `;
+}
+
+</script>
 </body>
 </html>
