@@ -32,12 +32,17 @@ body {
   position: relative;
 }
 .close-btn {
-  position: absolute; top: 16px; right: 16px;
-  width: 32px; height: 32px; border-radius: 50%;
-  background: rgba(255,255,255,0.1); border: none;
-  color: rgba(255,255,255,0.6); font-size: 16px;
+  position: fixed; top: 20px; right: 20px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(30,20,60,0.85); border: 1.5px solid rgba(255,255,255,0.25);
+  color: #fff; font-size: 16px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
+  z-index: 99999; pointer-events: all; touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255,255,255,0.2);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  flex-shrink: 0;
 }
+.close-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.92); }
 .title {
   font-size: 26px; font-weight: 800; text-align: center;
   background: linear-gradient(90deg, #a78bfa, #60a5fa);
@@ -237,6 +242,7 @@ input::placeholder { color: rgba(255,255,255,0.3); }
   background: linear-gradient(135deg, #1a1a2e, #16213e);
   border: 1px solid rgba(255,215,0,0.3);
   border-radius: 16px; padding: 16px; margin-bottom: 16px; text-align: center;
+  margin-top: 52px;
 }
 .goethe-logo { font-size: 32px; margin-bottom: 4px; }
 .goethe-title { font-size: 18px; font-weight: 800; color: #ffd700; }
@@ -1535,8 +1541,41 @@ const QUIZ_MODES = [
 ];
 const TIMER_SEC = 15;
 
+const LANG_LEVELS = [
+  {
+    id: 'A1', color: '#4ade80', glow: 'rgba(74,222,128,0.3)',
+    badge: 'Pemula', icon: '🌱',
+    desc: 'Percakapan dasar sehari-hari',
+    topics: ['Kosakata dasar', 'Artikel & Kasus', 'Verben A1', 'Angka & Waktu'],
+    available: true,
+  },
+  {
+    id: 'A2', color: '#60a5fa', glow: 'rgba(96,165,250,0.3)',
+    badge: 'Dasar', icon: '📘',
+    desc: 'Situasi umum & rutinitas',
+    topics: ['Kosakata A2', 'Komparativ', 'Präteritum', 'Preposisi'],
+    available: false,
+  },
+  {
+    id: 'B1', color: '#f59e0b', glow: 'rgba(245,158,11,0.3)',
+    badge: 'Menengah', icon: '🔥',
+    desc: 'Topik familiar & ekspresi',
+    topics: ['Kosakata B1', 'Konjunktiv II', 'Passiv', 'Nebensatz'],
+    available: false,
+  },
+  {
+    id: 'B2', color: '#e879f9', glow: 'rgba(232,121,249,0.3)',
+    badge: 'Atas', icon: '💎',
+    desc: 'Teks kompleks & abstrak',
+    topics: ['Kosakata B2', 'Erweiterte Syntax', 'Stilistik', 'Idiome'],
+    available: false,
+  },
+];
+
 let st = {
-  screen: "home",
+  screen: "level_select",
+  level: null,
+  levelTransition: false,
   name: "",
   cat: "Semua",
   qmode: "meaning",
@@ -1585,6 +1624,7 @@ function render(){
     anagram_result:renderAnagramResult, sentence:renderSentence,
     sentence_result:renderSentenceResult,
     vquiz_menu:renderVQuizMenu, vquiz:renderVQuiz, vquiz_result:renderVQuizResult,
+    level_select:renderLevelSelect, level_transition:renderLevelTransition,
   };
   app.innerHTML=(screens[st.screen]||renderHome)();
 }
@@ -1592,10 +1632,25 @@ function render(){
 // ======== HOME ========
 function renderHome(){
   const lb=getLB();
+  const lv = LANG_LEVELS.find(l => l.id === st.level) || LANG_LEVELS[0];
   return `
-    <div class="flag">🇩🇪🇮🇩</div>
-    <div class="title">Frei Deutsch</div>
-    <div class="subtitle">Belajar Bahasa Jerman · Level A1</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-size:22px">${lv.icon}</div>
+        <div>
+          <div style="font-size:18px;font-weight:900;background:linear-gradient(90deg,#a78bfa,#60a5fa);
+                      -webkit-background-clip:text;-webkit-text-fill-color:transparent">Frei Deutsch</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4)">Level <span style="color:${lv.color};font-weight:700">${lv.id}</span> · ${lv.badge}</div>
+        </div>
+      </div>
+      <button onclick="goTo('level_select')"
+        style="background:${lv.color}18;border:1.5px solid ${lv.color}50;color:${lv.color};
+               border-radius:99px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">
+        Ganti Level
+      </button>
+    </div>
+    <div style="height:3px;border-radius:99px;background:linear-gradient(90deg,${lv.color},#a78bfa);
+                margin-bottom:16px;opacity:0.6"></div>
     <input placeholder="Nama kamu (opsional)" value="${st.name}" oninput="st.name=this.value"/>
     <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:10px;font-weight:600">PILIH MODE BELAJAR</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -1872,8 +1927,8 @@ function renderAnagram(){
     return`<div class="letter-tile" onclick="anagramPlace(${i})">${l}</div>`;
   }).join("");
   return`
-    <button class="close-btn" onclick="finishAnagram()">✕</button>
-    <div class="meta" style="padding-right:36px">
+    <button class="close-btn" onclick="goTo('home')">✕</button>
+    <div class="meta" style="padding-right:52px;margin-top:52px">
       <span>Soal <span class="badge">#${st.anNum}</span></span>
       <span>Skor <span class="badge">${st.anScore}</span></span>
     </div>
@@ -1993,8 +2048,8 @@ function renderSentence(){
     `<div class="word-tile" onclick="sentPlace(${i})">${t.w}</div>`
   ).join("");
   return`
-    <button class="close-btn" onclick="finishSentence()">✕</button>
-    <div class="meta" style="padding-right:36px">
+    <button class="close-btn" onclick="goTo('home')">✕</button>
+    <div class="meta" style="padding-right:52px;margin-top:52px">
       <span>Soal <span class="badge">#${st.sentNum}</span></span>
       <span>Skor <span class="badge">${st.sentScore}</span></span>
     </div>
@@ -2293,8 +2348,8 @@ function renderEmoji(){
     return`<button class="${cls}" ${st.emAnswered?"disabled":""} onclick="handleEmojiAns(${i})">${label}${suf}</button>`;
   }).join("");
   return`
-    <button class="close-btn" onclick="finishEmoji()">✕</button>
-    <div class="meta" style="padding-right:36px">
+    <button class="close-btn" onclick="goTo('home')">✕</button>
+    <div class="meta" style="padding-right:52px;margin-top:52px">
       <span>Soal <span class="badge">#${st.emNum}</span></span>
       ${streakHtml}
       <span>Skor <span class="badge">${st.emScore}</span></span>
@@ -2528,7 +2583,7 @@ function renderSynonym(){
   }).join("");
   return`
     <button class="close-btn" onclick="finishSynonym()">✕</button>
-    <div class="title" style="font-size:22px">Sinonim 🔗</div>
+    <div class="title" style="font-size:22px;margin-top:52px">Sinonim 🔗</div>
     <div class="subtitle">Cocokkan kata yang bermakna sama</div>
     <div class="meta" style="margin-bottom:12px">
       <span>Ronde <span class="badge">#${st.synRound}</span></span>
@@ -3090,7 +3145,7 @@ function renderLesen(){
 
   return`
     <button class="close-btn" onclick="goTo('goethe')">✕</button>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:44px">
       <div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:99px;transition:width 0.3s"></div>
       </div>
@@ -3197,7 +3252,7 @@ function renderSchreiben(){
       : `<button id="formularBtn" class="btn-primary" onclick="submitFormular()" ${allFilled?'':'disabled'} style="${allFilled?'':'opacity:0.4'}">✓ Selesai</button>`;
     return`
       <button class="close-btn" onclick="goTo('goethe')">✕</button>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:44px">
         <div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#a78bfa,#60a5fa);border-radius:99px"></div>
         </div>
@@ -3220,7 +3275,7 @@ function renderSchreiben(){
       : `<button class="btn-primary" onclick="submitSchreiben()" ${wordCount>=10?'':'disabled'} style="${wordCount>=10?'':'opacity:0.4'}">✓ Kirim Jawaban</button>`;
     return`
       <button class="close-btn" onclick="goTo('goethe')">✕</button>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;margin-top:44px">
         <div style="flex:1;height:5px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#a78bfa,#60a5fa);border-radius:99px"></div>
         </div>
@@ -5790,16 +5845,184 @@ function renderVQuizResult(){
   `;
 }
 
-</script>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(() => console.log('SW registered'))
-          .catch(e => console.log('SW error:', e));
-      });
+// ======================================================
+// LEVEL SELECT SCREEN
+// ======================================================
+
+
+function selectLevel(id) {
+  const lv = LANG_LEVELS.find(l => l.id === id);
+  if (!lv.available) return;
+  st.level = id;
+  st.screen = 'level_transition';
+  render();
+  // After animation, go to home
+  setTimeout(() => {
+    st.screen = 'home';
+    render();
+  }, 2200);
+}
+
+function renderLevelSelect() {
+  const cards = LANG_LEVELS.map((lv, i) => {
+    const delay = i * 80;
+    if (lv.available) {
+      return `
+        <div onclick="selectLevel('${lv.id}')"
+          style="position:relative;border-radius:20px;border:2px solid ${lv.color}55;
+                 background:linear-gradient(135deg,${lv.color}12,${lv.color}06);
+                 padding:18px 16px;cursor:pointer;overflow:hidden;
+                 animation:slideUp 0.4s ease ${delay}ms both;
+                 box-shadow:0 4px 24px ${lv.glow}">
+          <!-- Glow top-right -->
+          <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;
+                      border-radius:50%;background:${lv.color}20;filter:blur(20px)"></div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="font-size:28px">${lv.icon}</div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:24px;font-weight:900;color:${lv.color}">${lv.id}</span>
+                <span style="background:${lv.color}25;color:${lv.color};border-radius:99px;
+                             padding:2px 10px;font-size:11px;font-weight:700">${lv.badge}</span>
+              </div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">${lv.desc}</div>
+            </div>
+            <div style="margin-left:auto;font-size:20px;color:${lv.color}">›</div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${lv.topics.map(t => `
+              <span style="background:${lv.color}15;color:${lv.color}cc;border-radius:99px;
+                           padding:3px 10px;font-size:10px;border:1px solid ${lv.color}30">${t}</span>
+            `).join('')}
+          </div>
+        </div>`;
+    } else {
+      return `
+        <div style="position:relative;border-radius:20px;border:2px solid rgba(255,255,255,0.07);
+                    background:rgba(255,255,255,0.03);padding:18px 16px;overflow:hidden;
+                    animation:slideUp 0.4s ease ${delay}ms both;opacity:0.55">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="font-size:28px;filter:grayscale(1)">${lv.icon}</div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:24px;font-weight:900;color:rgba(255,255,255,0.3)">${lv.id}</span>
+                <span style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.3);
+                             border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700">${lv.badge}</span>
+                <span style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);
+                             border-radius:99px;padding:2px 10px;font-size:10px">🔒 Coming Soon</span>
+              </div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:2px">${lv.desc}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${lv.topics.map(t => `
+              <span style="background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.2);
+                           border-radius:99px;padding:3px 10px;font-size:10px;
+                           border:1px solid rgba(255,255,255,0.07)">${t}</span>
+            `).join('')}
+          </div>
+        </div>`;
     }
-  </script>
+  }).join('');
+
+  return `
+    <style>
+      @keyframes slideUp {
+        from { opacity:0; transform:translateY(24px); }
+        to   { opacity:1; transform:translateY(0); }
+      }
+      @keyframes fadeInScale {
+        from { opacity:0; transform:scale(0.85); }
+        to   { opacity:1; transform:scale(1); }
+      }
+    </style>
+
+    <div style="text-align:center;margin-bottom:24px;animation:fadeInScale 0.5s ease both">
+      <div style="font-size:44px;margin-bottom:8px">🇩🇪</div>
+      <div style="font-size:26px;font-weight:900;background:linear-gradient(90deg,#a78bfa,#60a5fa);
+                  -webkit-background-clip:text;-webkit-text-fill-color:transparent">Frei Deutsch</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-top:4px">Pilih level belajar kamu</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+      ${cards}
+    </div>
+
+    <div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.2)">
+      Level A2, B1, B2 akan segera hadir 🚀
+    </div>
+  `;
+}
+
+function renderLevelTransition() {
+  const lv = LANG_LEVELS.find(l => l.id === st.level) || LANG_LEVELS[0];
+  return `
+    <style>
+      @keyframes zoomIn {
+        0%   { opacity:0; transform:scale(0.5); }
+        60%  { opacity:1; transform:scale(1.1); }
+        100% { opacity:1; transform:scale(1); }
+      }
+      @keyframes ripple {
+        0%   { transform:scale(0); opacity:0.6; }
+        100% { transform:scale(3.5); opacity:0; }
+      }
+      @keyframes fadeInUp {
+        from { opacity:0; transform:translateY(16px); }
+        to   { opacity:1; transform:translateY(0); }
+      }
+      @keyframes progressBar {
+        from { width:0%; }
+        to   { width:100%; }
+      }
+    </style>
+
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                min-height:340px;text-align:center">
+
+      <!-- Ripple rings -->
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;
+                  width:140px;height:140px;margin-bottom:28px">
+        <div style="position:absolute;width:140px;height:140px;border-radius:50%;
+                    background:${lv.color}30;animation:ripple 1.8s ease-out 0.1s infinite"></div>
+        <div style="position:absolute;width:140px;height:140px;border-radius:50%;
+                    background:${lv.color}20;animation:ripple 1.8s ease-out 0.5s infinite"></div>
+        <!-- Badge center -->
+        <div style="width:100px;height:100px;border-radius:50%;
+                    background:linear-gradient(135deg,${lv.color}40,${lv.color}15);
+                    border:3px solid ${lv.color};display:flex;flex-direction:column;
+                    align-items:center;justify-content:center;
+                    animation:zoomIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+                    box-shadow:0 0 40px ${lv.glow}">
+          <div style="font-size:30px;line-height:1">${lv.icon}</div>
+          <div style="font-size:18px;font-weight:900;color:${lv.color};line-height:1.2">${lv.id}</div>
+        </div>
+      </div>
+
+      <div style="animation:fadeInUp 0.4s ease 0.3s both">
+        <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:6px">
+          Level ${lv.id} — ${lv.badge}
+        </div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:24px">
+          ${lv.desc}
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="width:200px;height:4px;background:rgba(255,255,255,0.1);
+                  border-radius:99px;overflow:hidden;animation:fadeInUp 0.4s ease 0.5s both">
+        <div style="height:100%;background:linear-gradient(90deg,${lv.color},#a78bfa);
+                    border-radius:99px;animation:progressBar 1.8s ease forwards"></div>
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:10px;
+                  animation:fadeInUp 0.4s ease 0.6s both">
+        Memuat materi ${lv.id}...
+      </div>
+    </div>
+  `;
+}
+
+</script>
 </body>
 </html>
